@@ -1,0 +1,3 @@
+[submodule "ctx-ai"]
+	path = ctx-ai
+	url = git@github.com:kyp0717/ctx-ai.git
