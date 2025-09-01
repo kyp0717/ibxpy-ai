@@ -40,8 +40,8 @@ dev = [
     "ipython>=8.0",
 ]
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.setuptools]
+py-modules = ["src"]
 
 [tool.black]
 line-length = 100

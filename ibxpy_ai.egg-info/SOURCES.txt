@@ -1,0 +1,7 @@
+README.md
+pyproject.toml
+ibxpy_ai.egg-info/PKG-INFO
+ibxpy_ai.egg-info/SOURCES.txt
+ibxpy_ai.egg-info/dependency_links.txt
+ibxpy_ai.egg-info/requires.txt
+ibxpy_ai.egg-info/top_level.txt
