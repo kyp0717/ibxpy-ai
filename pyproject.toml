@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.13"
 license = {text = "MIT"}
 authors = [
-    {name = "IBXPy AI Team", email = "team@ibxpy.ai"}
+    {name = "Phage Ky", email = "kyp0717@gmail.com"}
 ]
 dependencies = [
     # Note: IB Python API package must be installed manually
