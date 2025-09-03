@@ -34,7 +34,7 @@ class TWSConnection(EWrapper, EClient):
         self.connection_time = None
         self._thread = None
         
-    def error(self, reqId: TickerId, errorCode: int, errorString: str, advancedOrderRejectJson=""):
+    def error(self, reqId: TickerId, errorTime: int, errorCode: int, errorString: str, advancedOrderRejectJson=""):
         """Handle error messages from TWS"""
         if errorCode == 502:
             logger.warning(f"Cannot connect to TWS: {errorString}")
