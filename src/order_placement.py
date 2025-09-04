@@ -76,6 +76,8 @@ class OrderClient(QuoteClient):
         self.actual_positions: Dict[str, Dict[str, Any]] = {}  # Actual positions from TWS
         self._positions_received = threading.Event()
         self.pnl: Dict[str, float] = {}  # Track PnL by symbol
+        self.commissions: Dict[str, Dict[str, float]] = {}  # Track commissions by symbol
+        self.total_commission: float = 0.0  # Track total commission for all trades
         
     def orderStatus(self, orderId: OrderId, status: str, filled: float, remaining: float,
                    avgFillPrice: float, permId: int, parentId: int, lastFillPrice: float,
@@ -92,13 +94,35 @@ class OrderClient(QuoteClient):
             if status in ["Filled", "FILLED"]:
                 order_result.status = "FILLED"
                 self._order_filled.set()
-                # Track position for PnL
+                
+                # Calculate commission (IBKR Pro: $0.005 per share, max 0.5% of trade value)
+                commission = min(order_result.filled_qty * 0.005, 
+                                order_result.filled_qty * avgFillPrice * 0.005)
+                
+                # Track commission
+                if order_result.symbol not in self.commissions:
+                    self.commissions[order_result.symbol] = {"buy": 0.0, "sell": 0.0, "total": 0.0}
+                
                 if order_result.action == "BUY":
+                    self.commissions[order_result.symbol]["buy"] += commission
+                    # Track position for PnL
                     self.positions[order_result.symbol] = {
                         "quantity": order_result.filled_qty,
                         "avg_cost": avgFillPrice,
-                        "total_cost": order_result.filled_qty * avgFillPrice
+                        "total_cost": order_result.filled_qty * avgFillPrice,
+                        "buy_commission": commission
                     }
+                else:  # SELL
+                    self.commissions[order_result.symbol]["sell"] += commission
+                    if order_result.symbol in self.positions:
+                        self.positions[order_result.symbol]["sell_commission"] = commission
+                
+                self.commissions[order_result.symbol]["total"] = (
+                    self.commissions[order_result.symbol]["buy"] + 
+                    self.commissions[order_result.symbol]["sell"]
+                )
+                self.total_commission += commission
+                
             elif status in ["Cancelled", "CANCELLED"]:
                 order_result.status = "CANCELLED"
                 self._order_status_received.set()
