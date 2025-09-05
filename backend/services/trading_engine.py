@@ -16,6 +16,7 @@ from ibapi.order import Order as IBOrder
 from .tws_service import tws_service, ConnectionState
 from .websocket_service import websocket_service
 from .market_data_processor import market_data_processor
+from .order_manager import order_manager
 from ..core.config import settings
 from ..core.exceptions import TradingException
 
@@ -113,6 +114,10 @@ class TradingEngine:
         await market_data_processor.start()
         logger.info("Market data processor started")
         
+        # Start order manager
+        await order_manager.start()
+        logger.info("Order manager started")
+        
         # Connect to TWS
         connected = await tws_service.connect()
         if not connected:
@@ -140,6 +145,10 @@ class TradingEngine:
         for symbol, req_id in self._subscriptions.items():
             await tws_service.cancel_market_data(req_id)
             
+        # Stop order manager
+        await order_manager.stop()
+        logger.info("Order manager stopped")
+        
         # Stop market data processor
         await market_data_processor.stop()
         logger.info("Market data processor stopped")
@@ -188,13 +197,27 @@ class TradingEngine:
                     request.limit_price
                 )
                 
+            # Create order in order manager first
+            order_details = await order_manager.create_order(
+                order_id=tws_service.wrapper.next_valid_id,
+                symbol=request.symbol,
+                action=request.action,
+                order_type=request.order_type,
+                quantity=request.quantity,
+                limit_price=request.limit_price,
+                stop_price=request.stop_price
+            )
+            
             # Place order (critical path - must be <10ms)
             order_id = await tws_service.place_order(contract, ib_order)
             
             # Calculate latency
             latency_ms = (time.perf_counter() - start_time) * 1000
             
-            # Track order
+            # Update execution latency
+            order_details.execution_latency_ms = latency_ms
+            
+            # Track order locally for backward compatibility
             order_status = OrderStatus(
                 order_id=order_id,
                 symbol=request.symbol,

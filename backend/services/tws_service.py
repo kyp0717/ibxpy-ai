@@ -21,6 +21,7 @@ from ibapi.common import TickerId, OrderId
 
 from ..core.config import settings
 from ..core.exceptions import TradingException
+from .order_manager import order_manager
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +66,19 @@ class TWSWrapper(EWrapper):
         """Receives order status updates."""
         logger.info(f"Order {orderId} status: {status}, filled: {filled}, remaining: {remaining}")
         
+        # Update order manager asynchronously
+        asyncio.create_task(
+            order_manager.update_order_status(
+                order_id=orderId,
+                status=status,
+                filled=int(filled),
+                remaining=int(remaining),
+                avg_fill_price=avgFillPrice,
+                last_fill_price=lastFillPrice,
+                message=whyHeld if whyHeld else ""
+            )
+        )
+        
     def openOrder(self, orderId: OrderId, contract: Contract, order: Order,
                   orderState):
         """Receives open order details."""
@@ -73,6 +87,21 @@ class TWSWrapper(EWrapper):
     def execDetails(self, reqId: int, contract: Contract, execution):
         """Receives execution details."""
         logger.info(f"Execution: {contract.symbol} {execution.shares}@{execution.price}")
+        
+        # Update order manager with execution details
+        asyncio.create_task(
+            order_manager.add_execution(
+                order_id=execution.orderId,
+                exec_id=execution.execId,
+                symbol=contract.symbol,
+                side=execution.side,
+                quantity=int(execution.shares),
+                price=execution.price,
+                commission=execution.commission if hasattr(execution, 'commission') else 0.0,
+                cumulative_quantity=int(execution.cumQty),
+                average_price=execution.avgPrice
+            )
+        )
         
     def position(self, account: str, contract: Contract, position: float,
                 avgCost: float):
