@@ -18,6 +18,7 @@ from .websocket_service import websocket_service
 from .market_data_processor import market_data_processor
 from .order_manager import order_manager
 from .state_manager import state_manager, SystemState
+from .connection_recovery import connection_recovery
 from ..core.config import settings
 from ..core.exceptions import TradingException
 
@@ -123,6 +124,10 @@ class TradingEngine:
         await state_manager.start()
         logger.info("State manager started")
         
+        # Start connection recovery service
+        await connection_recovery.start()
+        logger.info("Connection recovery service started")
+        
         # Connect to TWS
         connected = await tws_service.connect()
         if not connected:
@@ -152,6 +157,10 @@ class TradingEngine:
         for symbol, req_id in self._subscriptions.items():
             await tws_service.cancel_market_data(req_id)
             
+        # Stop connection recovery service
+        await connection_recovery.stop()
+        logger.info("Connection recovery service stopped")
+        
         # Stop state manager
         await state_manager.stop()
         logger.info("State manager stopped")

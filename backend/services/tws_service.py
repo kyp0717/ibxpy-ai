@@ -21,8 +21,10 @@ from ibapi.common import TickerId, OrderId
 
 from ..core.config import settings
 from ..core.exceptions import TradingException
+from ..core.error_handler import error_handler, with_retry, RetryPolicy, ErrorSeverity
 from .order_manager import order_manager
 from .state_manager import state_manager
+from .connection_recovery import connection_recovery
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,25 @@ class TWSWrapper(EWrapper):
     def error(self, reqId: TickerId, errorCode: int, errorString: str, advancedOrderRejectJson=""):
         """Handles errors from TWS."""
         logger.error(f"Error {errorCode}: {errorString} (reqId: {reqId})")
+        
+        # Determine severity based on error code
+        if errorCode >= 1000:  # System errors
+            severity = ErrorSeverity.CRITICAL
+        elif errorCode >= 500:  # Connection errors
+            severity = ErrorSeverity.HIGH
+        elif errorCode >= 200:  # Order errors
+            severity = ErrorSeverity.MEDIUM
+        else:
+            severity = ErrorSeverity.LOW
+            
+        # Record error
+        error_handler.record_error(
+            error_type=f"TWS_ERROR_{errorCode}",
+            message=errorString,
+            severity=severity,
+            context={"reqId": reqId, "errorCode": errorCode}
+        )
+        
         if errorCode == 502:  # Cannot connect to TWS
             self.connection_event.set()
             
@@ -150,11 +171,15 @@ class TWSService:
         self._order_callbacks: Dict[int, Callable] = {}
         self._req_id_counter = 1000
         
+        # Set reference for recovery service
+        connection_recovery.set_tws_service(self)
+        
+    @with_retry(RetryPolicy(max_attempts=3, initial_delay=2.0))
     async def connect(self, 
                      host: Optional[str] = None,
                      port: Optional[int] = None,
                      client_id: Optional[int] = None) -> bool:
-        """Connect to TWS/IB Gateway.
+        """Connect to TWS/IB Gateway with retry logic.
         
         Args:
             host: TWS host (default from settings)
@@ -175,31 +200,40 @@ class TWSService:
         logger.info(f"Connecting to TWS at {host}:{port} with client ID {client_id}")
         self.connection_state = ConnectionState.CONNECTING
         
+        circuit_breaker = error_handler.get_circuit_breaker("tws_connection")
+        
         try:
-            # Connect in sync mode
-            self.client.connect(host, port, client_id)
-            
-            # Start API thread
-            self._api_thread = threading.Thread(target=self._run_api_thread, daemon=True)
-            self._api_thread.start()
-            
-            # Wait for connection confirmation
-            if self.wrapper.connection_event.wait(timeout=5):
-                if self.wrapper.next_valid_id is not None:
-                    self.connection_state = ConnectionState.CONNECTED
-                    logger.info(f"Connected to TWS. Next valid ID: {self.wrapper.next_valid_id}")
-                    return True
+            # Use circuit breaker for connection
+            async def _connect():
+                # Connect in sync mode
+                self.client.connect(host, port, client_id)
+                
+                # Start API thread
+                self._api_thread = threading.Thread(target=self._run_api_thread, daemon=True)
+                self._api_thread.start()
+                
+                # Wait for connection confirmation
+                if self.wrapper.connection_event.wait(timeout=5):
+                    if self.wrapper.next_valid_id is not None:
+                        self.connection_state = ConnectionState.CONNECTED
+                        logger.info(f"Connected to TWS. Next valid ID: {self.wrapper.next_valid_id}")
+                        return True
+                    else:
+                        raise TradingException("No valid order ID received")
                 else:
-                    self.connection_state = ConnectionState.ERROR
-                    logger.error("Connection failed - no valid order ID received")
-                    return False
-            else:
-                self.connection_state = ConnectionState.ERROR
-                logger.error("Connection timeout")
-                return False
+                    raise TradingException("Connection timeout")
+                    
+            result = await circuit_breaker.call_async(_connect)
+            return result
                 
         except Exception as e:
             self.connection_state = ConnectionState.ERROR
+            error_handler.record_error(
+                error_type="TWS_CONNECTION_FAILED",
+                message=str(e),
+                severity=ErrorSeverity.CRITICAL,
+                context={"host": host, "port": port, "client_id": client_id}
+            )
             logger.error(f"Connection error: {e}")
             return False
             
