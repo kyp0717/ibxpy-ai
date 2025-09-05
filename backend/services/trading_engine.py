@@ -17,6 +17,7 @@ from .tws_service import tws_service, ConnectionState
 from .websocket_service import websocket_service
 from .market_data_processor import market_data_processor
 from .order_manager import order_manager
+from .state_manager import state_manager, SystemState
 from ..core.config import settings
 from ..core.exceptions import TradingException
 
@@ -118,13 +119,19 @@ class TradingEngine:
         await order_manager.start()
         logger.info("Order manager started")
         
+        # Start state manager
+        await state_manager.start()
+        logger.info("State manager started")
+        
         # Connect to TWS
         connected = await tws_service.connect()
         if not connected:
             logger.error("Failed to connect to TWS")
+            await state_manager.set_system_state(SystemState.ERROR)
             raise TradingException("TWS connection failed")
             
         self._running = True
+        await state_manager.set_system_state(SystemState.CONNECTED)
         
         # Request initial positions
         await tws_service.request_positions()
@@ -145,6 +152,10 @@ class TradingEngine:
         for symbol, req_id in self._subscriptions.items():
             await tws_service.cancel_market_data(req_id)
             
+        # Stop state manager
+        await state_manager.stop()
+        logger.info("State manager stopped")
+        
         # Stop order manager
         await order_manager.stop()
         logger.info("Order manager stopped")

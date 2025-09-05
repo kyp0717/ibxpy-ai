@@ -22,6 +22,7 @@ from ibapi.common import TickerId, OrderId
 from ..core.config import settings
 from ..core.exceptions import TradingException
 from .order_manager import order_manager
+from .state_manager import state_manager
 
 logger = logging.getLogger(__name__)
 
@@ -107,6 +108,17 @@ class TWSWrapper(EWrapper):
                 avgCost: float):
         """Receives position updates."""
         logger.info(f"Position: {account} {contract.symbol} {position}@{avgCost}")
+        
+        # Update state manager with position
+        asyncio.create_task(
+            state_manager.update_position(
+                symbol=contract.symbol,
+                quantity=position,
+                avg_cost=avgCost,
+                current_price=avgCost,  # Will be updated with market data
+                account=account
+            )
+        )
         
     def accountSummary(self, reqId: int, account: str, tag: str, value: str,
                       currency: str):
