@@ -107,13 +107,14 @@ uv run python path/to/script.py
 - **After updating any logic**, check whether existing unit tests need to be updated
 
 ## Logs (Claude Context)
+- **IMPORTANT** - After the successful completion of each phase, log the
+summary!
 - Logs folder is in `context/logs/` - these are Claude-specific phase summaries
-- When each phase is completed successfully, create a high level summary
+- When each phase is completed successfully, create a concise, high level summary
 - Log summary should be no more than 16 lines
-- Summary should be concise and high level overview
 - Each summary should have 1 heading only and several bullet points
 - Do not use icons in the log files
-- The format should be: `phase_xx_yyyymmdd.md`
+- The format should be: `stagexx-phasexx-yyyymmdd.md`
 - If a phase is reimplemented, append to existing log with timestamp
 
 ## Scripts 
