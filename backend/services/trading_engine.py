@@ -15,6 +15,7 @@ from ibapi.order import Order as IBOrder
 
 from .tws_service import tws_service, ConnectionState
 from .websocket_service import websocket_service
+from .market_data_processor import market_data_processor
 from ..core.config import settings
 from ..core.exceptions import TradingException
 
@@ -108,6 +109,10 @@ class TradingEngine:
             
         logger.info("Starting trading engine...")
         
+        # Start market data processor
+        await market_data_processor.start()
+        logger.info("Market data processor started")
+        
         # Connect to TWS
         connected = await tws_service.connect()
         if not connected:
@@ -134,6 +139,10 @@ class TradingEngine:
         # Cancel all market data subscriptions
         for symbol, req_id in self._subscriptions.items():
             await tws_service.cancel_market_data(req_id)
+            
+        # Stop market data processor
+        await market_data_processor.stop()
+        logger.info("Market data processor stopped")
             
         # Disconnect from TWS
         await tws_service.disconnect()
@@ -329,23 +338,18 @@ class TradingEngine:
         
         # Define callback for bar updates
         async def on_bar_update(bar_data):
-            bar = FiveSecondBar(
-                symbol=symbol,
-                timestamp=datetime.fromtimestamp(bar_data["time"]),
-                open=bar_data["open"],
-                high=bar_data["high"],
-                low=bar_data["low"],
-                close=bar_data["close"],
-                volume=bar_data["volume"],
-                wap=bar_data["wap"],
-                count=bar_data["count"]
-            )
-            
-            # Broadcast to WebSocket clients
-            await websocket_service.broadcast_five_second_bar(
-                symbol,
-                asdict(bar)
-            )
+            # Process bar through market data processor
+            # This will handle aggregation, metrics, and broadcasting
+            await market_data_processor.process_bar(symbol, {
+                "timestamp": datetime.fromtimestamp(bar_data["time"]),
+                "open": bar_data["open"],
+                "high": bar_data["high"],
+                "low": bar_data["low"],
+                "close": bar_data["close"],
+                "volume": bar_data["volume"],
+                "wap": bar_data["wap"],
+                "count": bar_data["count"]
+            })
             
         req_id = await tws_service.request_realtime_bars(contract, on_bar_update)
         

@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from backend.core.config import settings
 from backend.core.exceptions import TradingException
-from backend.api import health, websocket, trading
+from backend.api import health, websocket, trading, market_data
 from backend.services.websocket_service import websocket_service
 from backend.services.trading_engine import trading_engine
 
@@ -96,6 +96,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(websocket.router)
 app.include_router(trading.router)
+app.include_router(market_data.router)
 
 # Root endpoint
 @app.get("/")
