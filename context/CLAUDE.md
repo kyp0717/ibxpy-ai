@@ -2,17 +2,21 @@
 This file provides guidance for working with code in this repository.  
 It contains rules for python development and deployment 
 
+## Project Structure
+- Context files are in the `context/` folder
+- Project artifacts are at root level:
+  - `/tests` - Unit tests and integration tests
+  - `/docs` - Documentation (architecture, API, installation)
+  - `/scripts` - Helper and installation scripts
+  - `/src` - Application source code
+
 ## Context File Structure
-- All context files are located directly in the `ctx-ai` folder at the project root
-- Key context files and folders include:
+- Context-specific files in `context/` folder:
   - `CLAUDE.md` - This file with project guidelines
-  - `project-plan/` - Project architecture and constraints
+  - `project-plan/` - Project phases and architecture plans
   - `tasks.md` - Task tracking and status
   - `requirements.md` - Project requirements
-  - `logs/` - Phase completion summaries
-  - `tests/` - Unit tests and integration tests
-  - `scripts/` - Bash scripts used to support context and development (NOT
-  for direct implementaion as part of the application code base)
+  - `logs/` - Claude phase completion summaries (NOT application logs)
 
 ## Project Awareness & Context
 - At the start of a new conversation, read files in `project-plan/` to review project's architecture, style, and constraints.
@@ -23,36 +27,37 @@ It contains rules for python development and deployment
 ## Testing 
 - **IMPORTANT: Always use the python-phase-tester agent (Task tool with subagent_type: "general-purpose") for implementing all phase tests.**
 - Create a python virtual environment for testing using uv.
-- Please perform all tests within this virtural environment.
-- Create a folder call `tests` in submodule ctx-ai.
-- All test codes should reside in the test folder.
+- Please perform all tests within this virtual environment.
+- Tests are located in `/tests` at the project root.
+- All test codes should reside in the tests folder.
 - Do not write test results or update README.md after testing.
 - **After updating any logic**, check whether existing unit tests need to be updated. If so, do it.
 
-## Logs
-- Create a folder called `/logs` in the ctx-ai folder.
-- When each phase is completed successfully, create a high level of the summary. 
-- Log summary should be no more than 16 lines. 
-- Summary should be concise and hight level overview.
-- Each summary should have 1 heading only and several bullet points.
-- Do not use icons in the log files.
-- Do not mention next phase or previous phase in the summary.
-- Save the summary file in this folder.
-- A log summary should be created for each phase.
-- The format of the log file should look like this phase_xx_yyyymmdd.md.
-- The summary should also be datestamped and timestamped.
-- If a phase has been reimplemented or updated, summarized the changes and
-append the summary to the existing log file with datestamp and timestamp.
+## Logs (Claude Context)
+- Logs folder remains in `context/logs/` - these are Claude-specific phase summaries
+- When each phase is completed successfully, create a high level summary
+- Log summary should be no more than 16 lines
+- Summary should be concise and high level overview
+- Each summary should have 1 heading only and several bullet points
+- Do not use icons in the log files
+- Do not mention next phase or previous phase in the summary
+- The format of the log file should look like this phase_xx_yyyymmdd.md
+- The summary should also be datestamped and timestamped
+- If a phase has been reimplemented or updated, summarize the changes and
+  append the summary to the existing log file with datestamp and timestamp
 
 ## Scripts 
-- All shell cripts should be save to the ctx-ai git submodule in the folder call`scripts`.
-- Do not save scripts in the root directory in the parent repository.  
+- All shell scripts are located in `/scripts` at the project root
+- Installation scripts, helper scripts, and automation tools go here
+- Do not save scripts in other directories  
 
 ## Documents 
-- All documents should be save to the ctx-ai git submodule in the folder call`docs`.
-- Documents such as installation guide and other instructions should be saved as
-  markdown file within this folder.
-- Do not save documents in the root directory in the parent repository.  
+- All documentation is in `/docs` at the project root
+- Documentation structure:
+  - `/docs/architecture/` - System design and architecture docs
+  - `/docs/api/` - API specifications and endpoint documentation
+  - `/docs/installation/` - Setup and installation guides
+- Create new subfolders as needed for organization  
 
 ## General Principles:
 - **Never assume missing context. Ask questions if uncertain.**

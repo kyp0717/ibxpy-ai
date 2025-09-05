@@ -247,9 +247,87 @@ debugging trading operations
 - **Market Replay**: Simulate market conditions with historical data
 - **Mock TWS**: Implement TWS simulator for offline testing
 
+## Hybrid Architecture Requirements
+
+### Backend Architecture (FastAPI)
+
+#### Core Components
+- **FastAPI Server**: High-performance async web framework
+- **WebSocket Manager**: Real-time bidirectional communication
+- **Trading Engine**: Direct TWS integration with <10ms latency
+- **Data Aggregation Service**: 5-second to 1-minute bar conversion
+- **Cache Layer**: Redis for market data buffering
+
+#### Backend Dependencies
+- **fastapi** (>=0.100): Web framework with automatic API documentation
+- **uvicorn** (>=0.23): ASGI server for FastAPI
+- **websockets** (>=11.0): WebSocket server implementation
+- **redis** (>=4.5): In-memory data caching
+- **msgpack** (>=1.0): Binary serialization for performance
+- **asyncio**: Built-in async support
+
+### Frontend Architecture (React)
+
+#### Core Components
+- **React 18+**: UI framework with concurrent features
+- **TypeScript**: Type safety for complex trading data
+- **WebSocket Client**: Real-time market data subscription
+- **Chart Components**: Interactive trading charts
+- **State Management**: React Context/Redux for global state
+
+#### Frontend Dependencies
+- **react** (>=18.0): UI library
+- **typescript** (>=5.0): Type-safe JavaScript
+- **socket.io-client** (>=4.5): WebSocket client
+- **recharts** or **lightweight-charts**: Charting libraries
+- **tailwindcss** (>=3.0): Utility-first CSS framework
+- **axios** (>=1.0): HTTP client for REST API
+
+### Performance Optimizations
+
+#### Latency Requirements
+- **Trading Path**: Direct Python → TWS (<7ms)
+- **Monitoring Path**: Python → WebSocket → React (<20ms)
+- **Binary Protocol**: msgpack for 3-5x faster than JSON
+- **Batch Updates**: Aggregate updates every 50ms
+
+#### Architecture Patterns
+- **Dual-Mode System**: Separate paths for trading vs monitoring
+- **Event-Driven**: Async event handling throughout
+- **Cache-First**: Redis cache for instant data access
+- **Optimistic Updates**: UI updates before server confirmation
+
+### API Specification
+
+#### REST Endpoints
+- `GET /api/positions`: Current positions
+- `POST /api/orders`: Place new order
+- `GET /api/account`: Account information
+- `GET /api/market-data/{symbol}`: Latest market data
+
+#### WebSocket Events
+- `market_data`: Real-time price updates
+- `bar_data`: 5-second and 1-minute bars
+- `order_status`: Order execution updates
+- `position_update`: Position changes
+- `error`: Error notifications
+
+### Deployment Requirements
+
+#### Containerization
+- **Docker**: Container support for all services
+- **Docker Compose**: Multi-service orchestration
+- **Environment Config**: Separate dev/staging/production configs
+
+#### Monitoring
+- **Performance Metrics**: Latency tracking per component
+- **Health Checks**: Service availability monitoring
+- **Logging**: Structured logging with correlation IDs
+
 ## Conclusion
 
 This requirements document provides a comprehensive foundation for building a
 robust, scalable, and maintainable trading application using Interactive
-Brokers' TWS API. The architecture emphasizes reliability, performance, and
-security while maintaining flexibility for future enhancements.
+Brokers' TWS API with a modern hybrid architecture. The dual-mode system
+ensures low-latency trading execution while providing rich visualization
+capabilities through a web interface.
